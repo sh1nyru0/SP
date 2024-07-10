@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>883</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>南极地球物理数据处理系统</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>C:/Users/86150/.designer/backup/images/南极科考站.png</normaloff>C:/Users/86150/.designer/backup/images/南极科考站.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="QTreeWidget" name="fileTree">
+       <column>
+        <property name="text">
+         <string>主项目</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QMdiArea" name="mdiArea">
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="background">
+        <brush brushstyle="NoBrush">
+         <color alpha="255">
+          <red>160</red>
+          <green>160</green>
+          <blue>160</blue>
+         </color>
+        </brush>
+       </property>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>883</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="file_menu">
+    <property name="title">
+     <string>文件</string>
+    </property>
+    <addaction name="actionNewProject"/>
+    <addaction name="actionOpenProject"/>
+   </widget>
+   <widget class="QMenu" name="menu_2">
+    <property name="title">
+     <string>数据管理</string>
+    </property>
+    <addaction name="actiondataImport"/>
+    <addaction name="actiondataExport"/>
+    <addaction name="actiondataConversion"/>
+    <addaction name="actiondataPreview"/>
+    <addaction name="actiondataBase"/>
+   </widget>
+   <widget class="QMenu" name="menu_3">
+    <property name="title">
+     <string>可视化</string>
+    </property>
+    <property name="separatorsCollapsible">
+     <bool>false</bool>
+    </property>
+    <addaction name="actionSeismic"/>
+    <addaction name="actionGraMag"/>
+   </widget>
+   <widget class="QMenu" name="menu_4">
+    <property name="title">
+     <string>插件</string>
+    </property>
+   </widget>
+   <addaction name="file_menu"/>
+   <addaction name="menu_2"/>
+   <addaction name="menu_3"/>
+   <addaction name="menu_4"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <action name="actionNewProject">
+   <property name="text">
+    <string>新建项目</string>
+   </property>
+  </action>
+  <action name="actionOpenProject">
+   <property name="text">
+    <string>打开项目</string>
+   </property>
+  </action>
+  <action name="actiondataImport">
+   <property name="text">
+    <string>数据导入</string>
+   </property>
+  </action>
+  <action name="actiondataExport">
+   <property name="text">
+    <string>数据导出</string>
+   </property>
+  </action>
+  <action name="actiondataConversion">
+   <property name="text">
+    <string>格式转换</string>
+   </property>
+  </action>
+  <action name="actionSeismic">
+   <property name="text">
+    <string>地震</string>
+   </property>
+  </action>
+  <action name="actiondataPreview">
+   <property name="text">
+    <string>数据预览</string>
+   </property>
+  </action>
+  <action name="actionGraMag">
+   <property name="text">
+    <string>重磁</string>
+   </property>
+  </action>
+  <action name="actiondataBase">
+   <property name="text">
+    <string>数据库</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

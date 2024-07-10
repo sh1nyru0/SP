@@ -1,0 +1,12 @@
+lasio==0.31
+matplotlib==3.7.0
+mayavi==4.8.1
+numpy==1.23.5
+pandas==1.5.3
+PyQt5==5.15.10
+PyQt5_sip==12.11.0
+pyqtgraph==0.13.4
+QtPy==2.2.0
+segyio==1.9.12
+traits==6.4.3
+traitsui==7.4.3
