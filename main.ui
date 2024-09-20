@@ -104,11 +104,19 @@
     <property name="title">
      <string>插件</string>
     </property>
+    <addaction name="actionPlugin"/>
+   </widget>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>数据处理</string>
+    </property>
+    <addaction name="actionGrid"/>
    </widget>
    <addaction name="file_menu"/>
    <addaction name="menu_2"/>
    <addaction name="menu_3"/>
    <addaction name="menu_4"/>
+   <addaction name="menu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -165,6 +173,19 @@
   <action name="actiondataBase">
    <property name="text">
     <string>数据库</string>
+   </property>
+  </action>
+  <action name="actionPlugin">
+   <property name="text">
+    <string>插件管理器</string>
+   </property>
+  </action>
+  <action name="actionGrid">
+   <property name="text">
+    <string>网格化</string>
+   </property>
+   <property name="toolTip">
+    <string>网格化</string>
    </property>
   </action>
  </widget>

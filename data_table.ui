@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>528</width>
-    <height>326</height>
+    <height>354</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -103,9 +103,6 @@
      <property name="text">
       <string>导入数据库</string>
      </property>
-     <attribute name="buttonGroup">
-      <string notr="true">buttonGroup</string>
-     </attribute>
     </widget>
    </item>
    <item>

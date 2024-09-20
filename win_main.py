@@ -13,7 +13,6 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMenu, QInputDialog, QLineEdit, QMessageBox, QFileDialog, QTreeWidgetItem, QMdiSubWindow, \
     QScrollArea, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton
 from qtpy import uic
-
 from choose_data_table import ChooseDataTable
 from data_table import Data_Table
 from libs.share import MySignals, SI
@@ -25,8 +24,11 @@ from welcome import Welcome
 from win_gramag_setting import WinGraMagSetting
 from win_new_project import New_Project
 from win_seismic_setting import WinSeismicSetting
+from plugin_manager import PluginManager
+from grid import Grid
 
 gms = MySignals()
+
 
 class Win_Start:
     def __init__(self):
@@ -120,6 +122,7 @@ class Win_Filter:
             self.dataFrame = self.read_txt(self.currentFilePath, start_row - 1, selected_columns)
         for i in range(len(selected_columns)):
             self.dataFrame.rename(columns = {selected_columns[i]: new_columns[i]}, inplace=True)
+        self.dataFrame.insert(loc=0, column='Filename', value= os.path.basename(self.currentFilePath))
         self.model = PandasModel(self.dataFrame)
 
         def threadFunc():
@@ -258,6 +261,8 @@ class Win_Main:
         self.ui.actiondataBase.triggered.connect(self.onDataBase)
         self.ui.actionSeismic.triggered.connect(self.seismic)
         self.ui.actionGraMag.triggered.connect(self.graMag)
+        # self.ui.actionPlugin.triggered.connect(self.managePlugin) # 插件功能，待实现
+        self.ui.actionGrid.triggered.connect(self.actionGrid)
         self.ui.fileTree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.fileTree.itemDoubleClicked.connect(self.onItemDoubleClicked)
         self.ui.fileTree.customContextMenuRequested.connect(self.showContextMenu)
@@ -267,6 +272,22 @@ class Win_Main:
         gms.loadData.connect(self.loadData)
 
         self.mainPath = None
+        self.currentPath = None
+
+    # 网格化
+    def actionGrid(self):
+        SI.gridWin = Grid(self.currentPath)
+        SI.gridWin.ui.show()
+        SI.gridWin.ui.destroyed.connect(self.gpc)
+
+    def gpc(self):
+        gms.projectFile.connect(self.loadProject)
+
+    # 插件管理器
+    def managePlugin(self):
+        SI.pluginManagerWin = PluginManager()
+        SI.pluginManagerWin.ui.show()
+
 
     def onDataBase(self):
         SI.chooseDataTableWin = ChooseDataTable()
@@ -709,6 +730,7 @@ class Win_Main:
             idx = idx.parent()
         path = path.rstrip("/")
         path = project + "/" + path
+        self.currentPath = path
         if not os.path.isdir(path):
             _, fileExtension = os.path.splitext(path)
             if fileExtension == '.csv':

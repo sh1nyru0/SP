@@ -48,7 +48,7 @@ class MagneticDB:
         cursor.execute(sql, (500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 21)
+        data = data.reshape(500, 20)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
@@ -67,7 +67,7 @@ class MagneticDB:
         cursor.execute(sql, tuple(conditions.values()))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(data.shape[1], 21)
+        data = data.reshape(data.shape[1], 20)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         model = PandasModel(df)
@@ -125,7 +125,7 @@ class MagneticDB:
     def select(self):
         self.selectui = uic.loadUi("select_db.ui")
         vlayout = QVBoxLayout()
-        for i in range(21):
+        for i in range(20):
             if self.column_names[i] != 'id':
                 hlayout = QHBoxLayout()
                 cb = QCheckBox(self.column_names[i])
@@ -182,7 +182,7 @@ class MagneticDB:
         dialog.setLayout(layout)
         if dialog.exec_() == QDialog.Accepted:
             cursor = self.connection.cursor()
-            sql = 'INSERT INTO magnetic_data(Filename, Line_name, point, lon, lat, x, y, Height_WGS1984, Date, MagR, Magc, RefField, MagRTC, ACorr, MagF, MagL, MagML, MagML_Drape) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+            sql = 'INSERT INTO magnetic_data(Filename, Line_name, point, lon, lat, x, y, Height_WGS1984, Date, MagR, Magc, RefField, MagRTC, BCorr, MagBRTC,ACorr, MagF, MagL, MagML, MagML_Drape) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
             items = []
             for item in inputs:
                 items.append(item.text())
@@ -206,7 +206,7 @@ class MagneticDB:
         cursor.execute(sql, (self.page * 500 ,500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 21)
+        data = data.reshape(500, 20)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
@@ -221,7 +221,7 @@ class MagneticDB:
         cursor.execute(sql, (self.page, 500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 21)
+        data = data.reshape(500, 20)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
@@ -234,7 +234,7 @@ class MagneticDB:
         cursor.execute(sql)
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 21)
+        data = data.reshape(500, 20)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
@@ -253,7 +253,7 @@ class MagneticDB:
         cursor.execute(sql, (offset, limit))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(data.shape[1], 21)
+        data = data.reshape(data.shape[1], 20)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)

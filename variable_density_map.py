@@ -1,7 +1,5 @@
 import numpy as np
 import segyio
-from PyQt5.uic.properties import QtWidgets
-from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt import NavigationToolbar2QT
 from qtpy import uic
 

@@ -16,6 +16,7 @@ class SI:
     sactionalViewWin = None
     sactionalViewMpl = None
     chooseDataTableWin = None
+    gridWin = None
 
     # 保存MDI的子窗口对象
     subWinTable = {}

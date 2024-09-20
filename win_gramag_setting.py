@@ -29,5 +29,6 @@ class WinGraMagSetting:
             SI.sactionalViewWin = SactionalView(self.filePath)
             SI.sactionalViewWin.ui.show()
 
+
     def onCancel(self):
         self.ui.close()

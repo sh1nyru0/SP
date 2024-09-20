@@ -27,6 +27,7 @@ class New_Project:
             project = '{}/{}'.format(location,name)
             os.makedirs(project,exist_ok=True)
             os.makedirs(project + "/" + "原始文件", exist_ok=True)
+            os.makedirs(project + "/" + "网格化文件", exist_ok=True)
             jsonItem = {}
             jsonItem["name"] = name
             jsonItem["location"] = location

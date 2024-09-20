@@ -13,5 +13,10 @@
     "name": "k",
     "location": "D:/SP/project/k",
     "project": "D:/SP/project/k/k"
+  },
+  {
+    "name": "demo",
+    "location": "D:/SP/project",
+    "project": "D:/SP/project/demo"
   }
 ]

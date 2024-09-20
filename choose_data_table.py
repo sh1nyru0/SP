@@ -1,6 +1,6 @@
 from qtpy import uic
-from sqlalchemy.dialects.mysql import pymysql
 
+import GridDB
 from data_base import DataBase
 from electro_db import ElectroDB
 from gama_db import GamaDB
@@ -20,7 +20,7 @@ class ChooseDataTable:
 
     def btn_ok(self):
         id = self.ui.buttonGroup.checkedId()
-        # id从上到下依次为-2 -3 -4 -5 -6 -7 -8 -9
+        # id从上到下依次为-2 -3 -4 -5 -6 -7 -8 -9 -10
         SI.mainWin._openSubWin(DataBase)
         SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("数据库")
         if id == -2:# 重力
@@ -47,3 +47,6 @@ class ChooseDataTable:
         if id == -9:# 地基合成孔径雷达
             SI.mainWin._openSubWin(SarDB)
             SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("地基合成孔径雷达数据表")
+        if id == -10:# 网格化
+            SI.mainWin._openSubWin(GridDB)
+            SI.subWinTable[str(DataBase)]['subWin'].setWindowTtile("网格化数据表")

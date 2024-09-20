@@ -38,6 +38,7 @@ class ImportDB:
 
         for i in range(len(header)):
             cbl = ComboBox()
+            cbl.setEnabled(True)
             label = QLabel(header[i])
             for k, v in data_dict.items():
                 cbl.addItem(k) # 源数据
@@ -61,13 +62,13 @@ class ImportDB:
             text = self.cbls[i].currentText()
             if(text != '-' and text not in S):
                 S.add(text)
-            elif (text != '-'):
-                QMessageBox.critical(
-                    self.ui,
-                    '错误',
-                    '你重复导入了一列属性，请核实后重新导入！'
-                )
-                break
+            # elif (text != '-'):
+            #     QMessageBox.critical(
+            #         self.ui,
+            #         '错误',
+            #         '你重复导入了一列属性，请核实后重新导入！'
+            #     )
+            #     break
         connection = pymysql.connect(
             host='127.0.0.1',
             port=3306,
@@ -174,6 +175,18 @@ class ImportDB:
                 cursor.execute(sql, tuple(data))
             connection.commit()
             connection.close()
+        if id == -10: # 网格化
+            for i in range(len(self.data_dict[self.cbls[0].currentText()])):
+                data = []
+                for j in range(len(self.cbls)):
+                    if self.cbls[j].currentText() == '-':
+                        data.append('-')
+                    else:
+                        data.append(self.data_dict[self.cbls[j].currentText()[i]])
+                sql = 'INSERT INTO grid_data(Filename, id, nr, nc, nx, ny, nz) VALUES (%s, %s, %s, %s, %s, %s)'
+                cursor.execute(sql, tuple(data))
+            connection.commit()
+            connection.close()
 class Data_Table:
     def __init__(self):
         self.ui = uic.loadUi('data_table.ui')
@@ -197,7 +210,7 @@ class Data_Table:
                 data_dict[column_name] = column_data
 
         id = self.ui.buttonGroup.checkedId()
-        # 从左到右分别是-2 -3 -4 -5 -6 -7 -8 -9
+        # 从左到右分别是-2 -3 -4 -5 -6 -7 -8 -9 -10
         header = []
         if id == -2:
             header = ['Filename', 'Line_no', 'Flight_ID', 'Lon', 'Lat', 'x', 'y', 'Height_WGS1984', 'Date', 'Time', 'ST', 'CC', 'RB',
@@ -218,7 +231,6 @@ class Data_Table:
             header = ['Filename', 'content', 'description', 'samples', 'lines', 'bands', 'type', 'len']
         if id == -9:
             header = ['Filename', 'content', 'size', 'type', 'direction', 'proj']
-
         SI.dataWin = ImportDB(data_dict, header, id)
         SI.dataWin.ui.show()
 
