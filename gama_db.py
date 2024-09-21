@@ -11,15 +11,8 @@ from pandas_model import PandasModel
 
 
 class GamaDB:
-    def __init__(self):
-        self.connection = pymysql.connect(
-            host='127.0.0.1',
-            port=3306,
-            user='root',
-            password='123456',
-            db='geo',
-            charset='utf8'
-        )
+    def __init__(self, connection):
+        self.connection = connection
         self.page = 0
         self.column_names = ['id', 'Filename', 'Lon', 'Lat', 'kc', 'thc', 'uc']
         self.ui = uic.loadUi('db.ui')
@@ -37,17 +30,17 @@ class GamaDB:
         self.ui.btn_update.clicked.connect(self.update)
         self.ui.btn_reback.clicked.connect(self.reback)
 
-    def __del__(self):
-        self.connection.close()
-
     def init(self):
         cursor = self.connection.cursor()
         sql = 'SELECT * FROM gama_data LIMIT %s'
         cursor.execute(sql, (500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 7)
-        df = pd.DataFrame(data, columns=self.column_names)
+        if(data.shape == (1,0)):
+            df = pd.DataFrame(columns=self.column_names)
+        else:
+            data = data.reshape(500, 7)
+            df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
         self.ui.table.setModel(self.model)

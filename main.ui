@@ -39,7 +39,7 @@
       <widget class="QTreeWidget" name="fileTree">
        <column>
         <property name="text">
-         <string>主项目</string>
+         <string>项目</string>
         </property>
        </column>
       </widget>
@@ -75,7 +75,7 @@
    </property>
    <widget class="QMenu" name="file_menu">
     <property name="title">
-     <string>文件</string>
+     <string>项目</string>
     </property>
     <addaction name="actionNewProject"/>
     <addaction name="actionOpenProject"/>

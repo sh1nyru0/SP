@@ -7,24 +7,34 @@ from threading import Thread
 import lasio
 import numpy as np
 import pandas as pd
+import pymysql
 import segyio
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMenu, QInputDialog, QLineEdit, QMessageBox, QFileDialog, QTreeWidgetItem, QMdiSubWindow, \
     QScrollArea, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton
 from qtpy import uic
+
 from choose_data_table import ChooseDataTable
+from data_base import DataBase
 from data_table import Data_Table
+from electro_db import ElectroDB
+from gama_db import GamaDB
+from gps_db import GpsDB
+from gravity_db import GravityDB
+from hyper_db import HyperDB
 from libs.share import MySignals, SI
+from magnetic_db import MagneticDB
 from original_data import Original_Data
 from pandas_model import PandasModel
 from preview_csv import Preview_CSV
 from preview_data import Preview_Data
+from sar_db import SarDB
+from seg_db import SegDB
 from welcome import Welcome
 from win_gramag_setting import WinGraMagSetting
 from win_new_project import New_Project
 from win_seismic_setting import WinSeismicSetting
-from plugin_manager import PluginManager
 from grid import Grid
 
 gms = MySignals()
@@ -50,10 +60,11 @@ class Win_Start:
     def newProject(self):
         SI.newProjectWin = New_Project()
         SI.newProjectWin.ui.show()
+        # SI.newProjectWin.ui.destroyed.connect(self.refrash)
 
     def onOk(self):
-        SI.mainWin = Win_Main()
-        SI.mainWin._openSubWin(Welcome)
+        SI.mainWin = Win_Main(os.path.basename(self.ui.choose_project.currentText()))
+        SI.mainWin._openSubWin(Welcome,connection=None)
         SI.mainWin.ui.show()
         def threadFunc():
             path = self.ui.choose_project.currentText()
@@ -250,7 +261,7 @@ class Win_Filter:
         return df
 
 class Win_Main:
-    def __init__(self):
+    def __init__(self, name):
         self.ui = uic.loadUi("main.ui")
         self.ui.actionNewProject.triggered.connect(self.onNewProject)
         self.ui.actionOpenProject.triggered.connect(self.onOpenProject)
@@ -261,18 +272,29 @@ class Win_Main:
         self.ui.actiondataBase.triggered.connect(self.onDataBase)
         self.ui.actionSeismic.triggered.connect(self.seismic)
         self.ui.actionGraMag.triggered.connect(self.graMag)
-        # self.ui.actionPlugin.triggered.connect(self.managePlugin) # 插件功能，待实现
         self.ui.actionGrid.triggered.connect(self.actionGrid)
         self.ui.fileTree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.fileTree.itemDoubleClicked.connect(self.onItemDoubleClicked)
         self.ui.fileTree.customContextMenuRequested.connect(self.showContextMenu)
 
+        self.projectname = name
+
+        self.connection = pymysql.connect(
+            host='127.0.0.1',
+            port=3306,
+            user='root',
+            password='123456',
+            db=self.projectname,
+            charset='utf8'
+        )
 
         gms.projectFile.connect(self.loadProject)
         gms.loadData.connect(self.loadData)
-
         self.mainPath = None
         self.currentPath = None
+
+    def __del__(self):
+        self.connection.close()
 
     # 网格化
     def actionGrid(self):
@@ -282,11 +304,6 @@ class Win_Main:
 
     def gpc(self):
         gms.projectFile.connect(self.loadProject)
-
-    # 插件管理器
-    def managePlugin(self):
-        SI.pluginManagerWin = PluginManager()
-        SI.pluginManagerWin.ui.show()
 
 
     def onDataBase(self):
@@ -319,7 +336,6 @@ class Win_Main:
             actFileRename.triggered.connect(lambda: self.actFileRename(path))
             actFileCopy.triggered.connect(lambda: self.actFileCopy(path))
             actFileDelete.triggered.connect(lambda: self.actFileDelete(path))
-
             # 在指定位置显示菜单
             menuFile.exec_(self.ui.fileTree.mapToGlobal(pos))
 
@@ -690,10 +706,10 @@ class Win_Main:
                     df.to_csv(self.mainPath + "/原始文件/" + title + ".csv", encoding='utf-8', index=False)
                 SI.mainWin.loadProject(self.mainPath, os.path.basename(self.mainPath))
 
-    def _openSubWin(self, FuncClass, path=None):
+    def _openSubWin(self, FuncClass, connection):
         def createSubWin():
-            if path:
-                subWinFunc = FuncClass(path)
+            if connection:
+                subWinFunc = FuncClass(connection)
             else:
                 subWinFunc = FuncClass()
             subWin = QMdiSubWindow()
@@ -754,4 +770,51 @@ class Win_Main:
                 SI.subWinTable[str(Original_Data)]['subWin'].setWindowTitle(item.text(0))
                 SI.subWinTable[str(Original_Data)]['subWin'].widget().list.setModel(model)
         else:
-            return
+            if(os.path.basename(path) == "重力数据"):
+                SI.mainWin._openSubWin(GravityDB, connection=self.connection)
+                try:
+                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("重力数据")
+                except KeyError as e:
+                    pass
+            if(os.path.basename(path) == "磁法数据"):
+                SI.mainWin._openSubWin(MagneticDB, connection=self.connection)
+                try:
+                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("磁法数据")
+                except KeyError as e:
+                    pass
+            if(os.path.basename(path) == "电法数据"):
+                SI.mainWin._openSubWin(ElectroDB, connection=self.connection)
+                try:
+                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("电法数据")
+                except KeyError as e:
+                    pass
+            if(os.path.basename(path) == "地震数据"):
+                SI.mainWin._openSubWin(SegDB, connection=self.connection)
+                try:
+                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("地震数据")
+                except KeyError as e:
+                    pass
+            if(os.path.basename(path) == "gps数据"):
+                SI.mainWin._openSubWin(GpsDB, connection=self.connection)
+                try:
+                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("gps数据")
+                except KeyError as e:
+                    pass
+            if(os.path.basename(path) == "放射性数据"):
+                SI.mainWin._openSubWin(GamaDB, connection=self.connection)
+                try:
+                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle('放射性数据')
+                except KeyError as e:
+                    pass
+            if(os.path.basename(path) == "高光谱数据"):
+                SI.mainWin._openSubWin(HyperDB, connection=self.connection)
+                try:
+                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle('高光谱数据')
+                except KeyError as e:
+                    pass
+            if(os.path.basename(path) == "地基合成孔径雷达数据"):
+                SI.mainWin._openSubWin(SarDB, connection=self.connection)
+                try:
+                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle('地基合成孔径雷达数据')
+                except KeyError as e:
+                    pass

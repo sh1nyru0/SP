@@ -9,19 +9,11 @@ from qtpy import uic
 
 from pandas_model import PandasModel
 
-
 class MagneticDB:
-    def __init__(self):
-        self.connection = pymysql.connect(
-            host='127.0.0.1',
-            port=3306,
-            user='root',
-            password='123456',
-            db='geo',
-            charset='utf8'
-        )
+    def __init__(self, connection):
+        self.connection = connection
         self.page = 0
-        self.column_names = ['id', 'Filename', 'Line_name', 'point', 'lon', 'lat', 'x', 'y'
+        self.column_names = ['id', 'Filename', 'Line_name', 'point', 'lon', 'lat', 'x', 'y',
                              'Height_WGS1984', 'Date', 'MagR', 'Magc', 'RefField', 'MagRTC',
                              'BCorr', 'MagRBTC', 'ACorr', 'MagF', 'MagL', 'MagML', 'MagML_Drape']
         self.ui = uic.loadUi('db.ui')
@@ -39,17 +31,17 @@ class MagneticDB:
         self.ui.btn_update.clicked.connect(self.update)
         self.ui.btn_reback.clicked.connect(self.reback)
 
-    def __del__(self):
-        self.connection.close()
-
     def init(self):
         cursor = self.connection.cursor()
         sql = 'SELECT * FROM magnetic_data LIMIT %s'
         cursor.execute(sql, (500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 20)
-        df = pd.DataFrame(data, columns=self.column_names)
+        if(data.shape == (1,0)):
+            df = pd.DataFrame(columns=self.column_names)
+        else:
+            data = data.reshape(500, 21)
+            df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
         self.ui.table.setModel(self.model)
@@ -67,7 +59,7 @@ class MagneticDB:
         cursor.execute(sql, tuple(conditions.values()))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(data.shape[1], 20)
+        data = data.reshape(data.shape[1], 21)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         model = PandasModel(df)
@@ -125,7 +117,7 @@ class MagneticDB:
     def select(self):
         self.selectui = uic.loadUi("select_db.ui")
         vlayout = QVBoxLayout()
-        for i in range(20):
+        for i in range(21):
             if self.column_names[i] != 'id':
                 hlayout = QHBoxLayout()
                 cb = QCheckBox(self.column_names[i])
@@ -206,7 +198,7 @@ class MagneticDB:
         cursor.execute(sql, (self.page * 500 ,500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 20)
+        data = data.reshape(500, 21)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
@@ -221,7 +213,7 @@ class MagneticDB:
         cursor.execute(sql, (self.page, 500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 20)
+        data = data.reshape(500, 21)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
@@ -234,7 +226,7 @@ class MagneticDB:
         cursor.execute(sql)
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 20)
+        data = data.reshape(500, 21)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
@@ -253,7 +245,7 @@ class MagneticDB:
         cursor.execute(sql, (offset, limit))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(data.shape[1], 20)
+        data = data.reshape(data.shape[1], 21)
         df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)

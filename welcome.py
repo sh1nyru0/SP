@@ -11,10 +11,6 @@ class Welcome:
         h = self.ui.widget.height()
         pixmap = QPixmap("./images/welcome.png")
         painter = QPainter(pixmap)
-        # font = QFont("黑体", pointSize=20)
-        # painter.setFont(font)
-        # painter.setPen(QColor(0, 0, 128))
-        # painter.drawText(pixmap.rect(), Qt.AlignCenter, "欢迎使用！")
         painter.end()
 
         self.ui.label.setPixmap(pixmap)

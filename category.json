@@ -5,18 +5,8 @@
     "project": "D:/SP/project/工程1"
   },
   {
-    "name": "m",
+    "name": "geo",
     "location": "D:/SP/project",
-    "project": "D:/SP/project/m"
-  },
-  {
-    "name": "k",
-    "location": "D:/SP/project/k",
-    "project": "D:/SP/project/k/k"
-  },
-  {
-    "name": "demo",
-    "location": "D:/SP/project",
-    "project": "D:/SP/project/demo"
+    "project": "D:/SP/project/geo"
   }
 ]

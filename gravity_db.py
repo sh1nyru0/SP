@@ -10,15 +10,8 @@ import pymysql
 from pandas_model import PandasModel
 
 class GravityDB:
-    def __init__(self):
-        self.connection = pymysql.connect(
-            host='127.0.0.1',
-            port=3306,
-            user='root',
-            password='123456',
-            db='geo',
-            charset='utf8'
-        )
+    def __init__(self, connection):
+        self.connection = connection
         self.page = 0
         self.column_names = ['id','Filename', 'Line_no', 'Flight_ID', 'Lon', 'Lat', 'x', 'y', 'Height_WGS1984', 'Date',
                              'Time', 'ST', 'CC', 'RB', 'XACC', 'LACC', 'Still', 'Base', 'ST_real', 'Beam_vel',
@@ -39,17 +32,17 @@ class GravityDB:
         self.ui.btn_update.clicked.connect(self.update)
         self.ui.btn_reback.clicked.connect(self.reback)
 
-    def __del__(self):
-        self.connection.close()
-
     def init(self):
         cursor = self.connection.cursor()
         sql = 'SELECT * FROM gravity_data LIMIT %s'
         cursor.execute(sql, (500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 32)
-        df = pd.DataFrame(data, columns=self.column_names)
+        if(data.shape == (1,0)):
+            df = pd.DataFrame(columns=self.column_names)
+        else:
+            data = data.reshape(500, 32)
+            df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
         self.ui.table.setModel(self.model)

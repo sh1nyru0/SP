@@ -11,17 +11,10 @@ from pandas_model import PandasModel
 
 
 class ElectroDB:
-    def __init__(self):
-        self.connection = pymysql.connection(
-            host='127.0.0.1',
-            port=3306,
-            user='root',
-            password='123456',
-            db='geo',
-            charset='utf8'
-        )
+    def __init__(self, connection):
+        self.connection = connection
         self.page = 0
-        self.column_name = ['id', 'Filename', 'opnum', 'freq', 'comp', 'ampa', 'ephz', 'hmag', 'hphz', 'resistivity', 'phase', 'rho', 'phz']
+        self.column_names = ['id', 'Filename', 'opnum', 'freq', 'comp', 'ampa', 'emag' ,'ephz', 'hmag', 'hphz', 'resistivity', 'phase', 'rho', 'phz']
         self.ui = uic.loadUi('db.ui')
         self.selectUi = None
         self.cbs = []
@@ -37,17 +30,17 @@ class ElectroDB:
         self.ui.btn_update.clicked.connect(self.update)
         self.ui.btn_reback.clicked.connect(self.reback)
 
-    def __del__(self):
-        self.connection.close()
-
     def init(self):
         cursor = self.connection.cursor()
         sql = 'SELECT * FROM electro_data LIMIT %s'
         cursor.execute(sql, (500))
         res = cursor.fetchall()
         data = np.array([res])
-        data = data.reshape(500, 14)
-        df = pd.DataFrame(data, columns=self.column_names)
+        if(data.shape == (1,0)):
+            df = pd.DataFrame(columns=self.column_names)
+        else:
+            data = data.reshape(500, 14)
+            df = pd.DataFrame(data, columns=self.column_names)
         df = df.apply(pd.to_numeric, errors='ignore')
         self.model = PandasModel(df)
         self.ui.table.setModel(self.model)
