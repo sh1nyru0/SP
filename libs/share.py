@@ -1,3 +1,4 @@
+import pandas as pd
 from PyQt5.QtCore import QObject, pyqtSignal, QModelIndex
 from pandas_model import PandasModel
 
@@ -26,8 +27,9 @@ class SI:
 # 自定义信号源对象类型，一定要继承自QObject
 class MySignals(QObject):
     loadData = pyqtSignal(PandasModel)
-    projectFile = pyqtSignal(str,str)
+    projectFile = pyqtSignal(str,str)# projectpath projectname
     project = pyqtSignal()
     log = pyqtSignal(str)
     dataPath = pyqtSignal(str)
     msgBox = pyqtSignal(str, str)
+    filterdf = pyqtSignal(pd.DataFrame, str, str) # df dataname filename

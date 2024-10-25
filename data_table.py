@@ -187,81 +187,82 @@ class ImportDB:
                 cursor.execute(sql, tuple(data))
             connection.commit()
             connection.close()
-class Data_Table:
-    def __init__(self):
-        self.ui = uic.loadUi('data_table.ui')
-        self.ui.table.horizontalHeader().setSectionsMovable(True)
-        self.ui.table.horizontalHeader().setDragEnabled(True)
-        self.ui.table.setSelectionBehavior(QAbstractItemView.SelectColumns)
-        self.ui.table.setDragDropMode(QAbstractItemView.InternalMove)
-        self.ui.btnData.clicked.connect(self.importDataBase)
 
-    def importDataBase(self):
-        model = self.ui.table.model()
-        data_dict = {}
-        if model is not None:
-            for col in range(model.columnCount()):
-                column_name = model.headerData(col, Qt.Horizontal, Qt.DisplayRole)
-                column_data = []
-                for row in range(model.rowCount()):
-                    index = model.index(row, col)
-                    data = model.data(index, Qt.DisplayRole)
-                    column_data.append(data)
-                data_dict[column_name] = column_data
-
-        id = self.ui.buttonGroup.checkedId()
-        # 从左到右分别是-2 -3 -4 -5 -6 -7 -8 -9 -10
-        header = []
-        if id == -2:
-            header = ['Filename', 'Line_no', 'Flight_ID', 'Lon', 'Lat', 'x', 'y', 'Height_WGS1984', 'Date', 'Time', 'ST', 'CC', 'RB',
-                      'XACC', 'LACC', 'Still', 'Base', 'ST_real', 'Beam_vel', 'rec_grav', 'Abs_grav', 'VaccCor', 'EotvosCor', 'FaCor',
-                      'HaccCor', 'Free air', 'FAA_flit', 'FAA_clip', 'Level_cor', 'FAA_level', 'Fa_4600m']
-        if id == -3:
-            header = ['Filename', 'Line_name', 'point', 'lon', 'lat', 'x', 'y', 'Height_WGS1984', 'Date', 'MagR', 'Magc', 'RefField',
-                      'MagRTC', 'BCorr', 'MagBRTC', 'ACorr', 'MagF', 'MagL', 'MagML', 'MagML_Drape']
-        if id == -4:
-            header = ['Filename', 'opnum', 'freq', 'comp', 'ampa', 'emag', 'ephz', 'hmag', 'hphz', 'resistivity', 'phase', 'rho', 'phz']
-        if id == -5:
-            header = ['Filename', 'opnum', 'olnum', 'ns', 'dt', 'e', 'n', 'ampl']
-        if id == -6:
-            header = ['Filename', 'Lon', 'Lat', 'kc', 'thc', 'uc']
-        if id == -7:
-            header = ['Filename', 'FH', 'UCTCT', 'Lon', 'Lat', 'Vel', 'UTCD']
-        if id == -8:
-            header = ['Filename', 'content', 'description', 'samples', 'lines', 'bands', 'type', 'len']
-        if id == -9:
-            header = ['Filename', 'content', 'size', 'type', 'direction', 'proj']
-        SI.dataWin = ImportDB(data_dict, header, id)
-        SI.dataWin.ui.show()
-
-    def dropEvent(self, event):
-        mime_data = event.mimeData()
-        if mime_data.hasFormat("application/x-qabstractitemmodeldatalist"):
-            encoded_data = mime_data.data("application/x-qabstractitemmodeldatalist")
-            stream = QDataStream(encoded_data, QIODevice.ReadOnly)
-            rows = []
-            while not stream.atEnd():
-                row, col, item_data = stream.readInt(), stream.readInt(), QByteArray()
-                stream >> item_data
-                rows.append((row, col, item_data))
-            rows.sort(reverse=True)
-            model = self.ui.table.model()
-            for row, col, item_data in rows:
-                if col != self.ui.table.horizontalHeader().currentIndex().column():
-                    continue
-                # 首先保存被拖拽的列的数据和列名
-                old_col_data = []
-                for i in range(model.rowCount()):
-                    old_col_data.append(model.index(i, col).data())
-                old_col_name = self.model().headerData(col, Qt.Horizontal, Qt.DisplayRole)
-
-                # 移动列并修改列名
-                self.horizontalHeader().moveSection(col, self.horizontalHeader().currentIndex().column())
-                self.model().setHeaderData(self.horizontalHeader().currentIndex().column(), Qt.Horizontal, old_col_name, Qt.DisplayRole)
-
-                # 将原来被拖拽的列的数据插入到新位置，由于前面已经移动了位置，所以使用当前列号
-                for i, data in enumerate(old_col_data):
-                    new_item = QStandardItem(str(data))
-                    model.setItem(i, self.horizontalHeader().currentIndex().column(), new_item)
-        else:
-            self.ui.dropEvent(event)
+# class Data_Table:
+#     def __init__(self):
+#         self.ui = uic.loadUi('data_table.ui')
+#         self.ui.table.horizontalHeader().setSectionsMovable(True)
+#         self.ui.table.horizontalHeader().setDragEnabled(True)
+#         self.ui.table.setSelectionBehavior(QAbstractItemView.SelectColumns)
+#         self.ui.table.setDragDropMode(QAbstractItemView.InternalMove)
+#         self.ui.btnData.clicked.connect(self.importDataBase)
+#
+#     def importDataBase(self):
+#         model = self.ui.table.model()
+#         data_dict = {}
+#         if model is not None:
+#             for col in range(model.columnCount()):
+#                 column_name = model.headerData(col, Qt.Horizontal, Qt.DisplayRole)
+#                 column_data = []
+#                 for row in range(model.rowCount()):
+#                     index = model.index(row, col)
+#                     data = model.data(index, Qt.DisplayRole)
+#                     column_data.append(data)
+#                 data_dict[column_name] = column_data
+#
+#         id = self.ui.buttonGroup.checkedId()
+#         # 从左到右分别是-2 -3 -4 -5 -6 -7 -8 -9 -10
+#         header = []
+#         if id == -2:
+#             header = ['Filename', 'Line_no', 'Flight_ID', 'Lon', 'Lat', 'x', 'y', 'Height_WGS1984', 'Date', 'Time', 'ST', 'CC', 'RB',
+#                       'XACC', 'LACC', 'Still', 'Base', 'ST_real', 'Beam_vel', 'rec_grav', 'Abs_grav', 'VaccCor', 'EotvosCor', 'FaCor',
+#                       'HaccCor', 'Free air', 'FAA_flit', 'FAA_clip', 'Level_cor', 'FAA_level', 'Fa_4600m']
+#         if id == -3:
+#             header = ['Filename', 'Line_name', 'point', 'lon', 'lat', 'x', 'y', 'Height_WGS1984', 'Date', 'MagR', 'Magc', 'RefField',
+#                       'MagRTC', 'BCorr', 'MagBRTC', 'ACorr', 'MagF', 'MagL', 'MagML', 'MagML_Drape']
+#         if id == -4:
+#             header = ['Filename', 'opnum', 'freq', 'comp', 'ampa', 'emag', 'ephz', 'hmag', 'hphz', 'resistivity', 'phase', 'rho', 'phz']
+#         if id == -5:
+#             header = ['Filename', 'opnum', 'olnum', 'ns', 'dt', 'e', 'n', 'ampl']
+#         if id == -6:
+#             header = ['Filename', 'Lon', 'Lat', 'kc', 'thc', 'uc']
+#         if id == -7:
+#             header = ['Filename', 'FH', 'UCTCT', 'Lon', 'Lat', 'Vel', 'UTCD']
+#         if id == -8:
+#             header = ['Filename', 'content', 'description', 'samples', 'lines', 'bands', 'type', 'len']
+#         if id == -9:
+#             header = ['Filename', 'content', 'size', 'type', 'direction', 'proj']
+#         SI.dataWin = ImportDB(data_dict, header, id)
+#         SI.dataWin.ui.show()
+#
+#     def dropEvent(self, event):
+#         mime_data = event.mimeData()
+#         if mime_data.hasFormat("application/x-qabstractitemmodeldatalist"):
+#             encoded_data = mime_data.data("application/x-qabstractitemmodeldatalist")
+#             stream = QDataStream(encoded_data, QIODevice.ReadOnly)
+#             rows = []
+#             while not stream.atEnd():
+#                 row, col, item_data = stream.readInt(), stream.readInt(), QByteArray()
+#                 stream >> item_data
+#                 rows.append((row, col, item_data))
+#             rows.sort(reverse=True)
+#             model = self.ui.table.model()
+#             for row, col, item_data in rows:
+#                 if col != self.ui.table.horizontalHeader().currentIndex().column():
+#                     continue
+#                 # 首先保存被拖拽的列的数据和列名
+#                 old_col_data = []
+#                 for i in range(model.rowCount()):
+#                     old_col_data.append(model.index(i, col).data())
+#                 old_col_name = self.model().headerData(col, Qt.Horizontal, Qt.DisplayRole)
+#
+#                 # 移动列并修改列名
+#                 self.horizontalHeader().moveSection(col, self.horizontalHeader().currentIndex().column())
+#                 self.model().setHeaderData(self.horizontalHeader().currentIndex().column(), Qt.Horizontal, old_col_name, Qt.DisplayRole)
+#
+#                 # 将原来被拖拽的列的数据插入到新位置，由于前面已经移动了位置，所以使用当前列号
+#                 for i, data in enumerate(old_col_data):
+#                     new_item = QStandardItem(str(data))
+#                     model.setItem(i, self.horizontalHeader().currentIndex().column(), new_item)
+#         else:
+#             self.ui.dropEvent(event)

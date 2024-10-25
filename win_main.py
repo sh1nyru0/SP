@@ -1,4 +1,3 @@
-import csv
 import json
 import os
 import re
@@ -12,33 +11,35 @@ import segyio
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMenu, QInputDialog, QLineEdit, QMessageBox, QFileDialog, QTreeWidgetItem, QMdiSubWindow, \
-    QScrollArea, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton
+    QScrollArea, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton, QComboBox
 from qtpy import uic
 
-from choose_data_table import ChooseDataTable
-from data_base import DataBase
-from data_table import Data_Table
-from electro_db import ElectroDB
-from gama_db import GamaDB
-from gps_db import GpsDB
-from gravity_db import GravityDB
-from hyper_db import HyperDB
+from GridWin import GridWin
+# from data_table import Data_Table
+from db import DB
 from libs.share import MySignals, SI
-from magnetic_db import MagneticDB
 from original_data import Original_Data
 from pandas_model import PandasModel
 from preview_csv import Preview_CSV
 from preview_data import Preview_Data
-from sar_db import SarDB
-from seg_db import SegDB
 from welcome import Welcome
 from win_gramag_setting import WinGraMagSetting
 from win_new_project import New_Project
 from win_seismic_setting import WinSeismicSetting
-from grid import Grid
 
 gms = MySignals()
 
+gpslist = ['Filename', 'FH', 'UCTCT', 'Lon', 'Lat', 'Vel', 'UTCD', 'xq', 'yq', 'zq', 'gridname']
+electrolist = ['Filename', 'opnum', 'freq', 'comp', 'ampa', 'emag', 'ephz', 'hmag', 'hphz', 'resistivity', 'phase', 'rho', 'phz', 'xq', 'yq', 'zq', 'gridname']
+gamalist = ['Filename', 'Lon', 'Lat', 'kc', 'thc', 'uc', 'xq', 'yq', 'zq', 'gridname']
+gravitylist = ['Filename', 'Line_no', 'Flight_ID', 'Lon', 'Lat', 'x', 'y', 'Height_WGS1984', 'Date', 'Time', 'ST', 'CC', 'RB', 'XACC', 'LACC', 'Still', 'Base', 'ST_real', 'Beam_vel', 'rec_grav', 'Abs_grav', 'VaccCor', 'EotvosCor', 'FaCor', 'HaccCor', 'Free_air', 'FAA_filt', 'FAA_clip', 'Level_cor', 'FAA_level', 'Fa_4600m', 'xq', 'yq', 'zq', 'gridname']
+hyperlist = ['Filename', 'content', 'description', 'samples', 'lines', 'bands', 'type', 'len', 'xq', 'yq', 'zq', 'gridname']
+magneticlist = ['Filename', 'Line_name', 'point', 'lon', 'lat', 'x', 'y', 'Height_WGS1984', 'Date', 'MagR', 'Magc', 'RefField', 'MagRTC', 'BCorr', 'MagBRTC', 'ACorr', 'MagF', 'MagL', 'MagML', 'MagML_Drape', 'xq', 'yq', 'zq', 'gridname']
+sarlist = ['Filename', 'content', 'size', 'type', 'direction', 'proj', 'xq', 'yq', 'zq', 'gridname']
+seglist = ['Filename', 'opnum', 'olnum', 'ns', 'dt', 'e', 'n', 'ampl', 'xq', 'yq', 'zq', 'gridname']
+lists = ['-', gpslist, sarlist, seglist, gamalist, electrolist, magneticlist, gravitylist, hyperlist]
+datanames = ['-', 'gps_data', 'sar_data', 'seg_data', 'gama_data', 'electro_data', 'magnetic_data', 'gravity_data', 'hyper_data']
+cdatanames = ['-', 'gps数据', '地基合成孔径雷达数据', '地震数据', '放射性数据', '电法数据', '磁法数据', '重力数据', '高光谱数据']
 
 class Win_Start:
     def __init__(self):
@@ -60,10 +61,9 @@ class Win_Start:
     def newProject(self):
         SI.newProjectWin = New_Project()
         SI.newProjectWin.ui.show()
-        # SI.newProjectWin.ui.destroyed.connect(self.refrash)
 
     def onOk(self):
-        SI.mainWin = Win_Main(os.path.basename(self.ui.choose_project.currentText()))
+        SI.mainWin = Win_Main(self.ui.choose_project.currentText())
         SI.mainWin._openSubWin(Welcome,connection=None)
         SI.mainWin.ui.show()
         def threadFunc():
@@ -79,116 +79,177 @@ class Win_Start:
         self.ui.close()
 
 class Win_Filter:
-    def __init__(self):
+    def __init__(self, projectPath, filePath, fileName, connection):
         self.ui = uic.loadUi("filter_data.ui")
-        self.ui.btnLoadData.clicked.connect(self.onLoadData)
-        self.ui.btnAllCheck.clicked.connect(self.onAllCheck)
-        self.ui.btnNotCheck.clicked.connect(self.onNotCheck)
-        self.ui.btnDisCheck.clicked.connect(self.onDisCheck)
         self.columns = []
         self.checkboxes = []
-        self.les = []
+        self.cbs = []
         self.btns = []
-        self.currentDataFrame = None
-        self.currentFilePath = None # 所选文件的目录
-        gms.dataPath.connect(self.showColumnSelection)
+        self.dataname = None
+        self.projectPath = projectPath
+        self.filePath = filePath
+        self.df = None
+        self.fileName = fileName
+        self.connection = connection
+        self.ui.btnLoadData.clicked.connect(self.onLoadData)
+        self.ui.btnCancel.clicked.connect(self.onCancel)
+        self.ui.datacb.currentIndexChanged.connect(self.chooseDataBase)
 
-    def onAllCheck(self):
-        for cb in self.checkboxes:
-            cb.setChecked(True)
-
-    def onNotCheck(self):
-        for cb in self.checkboxes:
-            cb.setChecked(False)
-
-    def onDisCheck(self):
-        for cb in self.checkboxes:
-            cb.setChecked(not cb.isChecked())
-
-    # 加载数据按钮
-    def onLoadData(self):
-        start_row = int(self.ui.rowInput.text()) if self.ui.rowInput.text().isdigit() else 1
-        selected_columns = [] # 被选中的旧列名
-        for i,cb in enumerate(self.checkboxes):
-            if cb.isChecked():
-                selected_columns.append(self.columns[i])
-        new_columns = [cb.text() for cb in self.checkboxes if cb.isChecked()] # 被选中的新列名
-        self.refreshDataBasedOnSelection(start_row, selected_columns,new_columns) # 在表格中刷新数据
-        if not os.path.exists(self.currentFilePath):
-            shutil.copyfile(self.currentFilePath, SI.mainWin.mainPath + "/原始文件/" + os.path.basename(self.currentFilePath))
-        SI.mainWin.loadProject(SI.mainWin.mainPath,os.path.basename(SI.mainWin.mainPath))
-
-    # 基于所选文件进行刷新数据
-    def refreshDataBasedOnSelection(self, start_row, selected_columns,new_columns):
-        if self.currentFilePath.lower().endswith('.xyz'):
-           self.dataFrame = self.read_xyz(self.currentFilePath, start_row - 1, selected_columns)
-        elif self.currentFilePath.lower().endswith('.las'):
-            self.dataFrame = self.read_las(self.currentFilePath, start_row - 1, selected_columns)
-        elif self.currentFilePath.lower().endswith('.grd'):
-            self.dataFrame = self.read_grd(self.currentFilePath, skip_rows=start_row - 1,
-                                           selected_columns=selected_columns)
-        elif self.currentFilePath.lower().endswith('.csv'):
-            self.dataFrame = self.read_csv(self.currentFilePath, start_row - 1, selected_columns)
-        elif self.currentFilePath.lower().endswith('.txt'):
-            self.dataFrame = self.read_txt(self.currentFilePath, start_row - 1, selected_columns)
-        for i in range(len(selected_columns)):
-            self.dataFrame.rename(columns = {selected_columns[i]: new_columns[i]}, inplace=True)
-        self.dataFrame.insert(loc=0, column='Filename', value= os.path.basename(self.currentFilePath))
-        self.model = PandasModel(self.dataFrame)
-
-        def threadFunc():
-            gms.loadData.emit(self.model)
-        Thread(target=threadFunc).start()
-        self.ui.close()
-
-    # 修改属性值的槽函数(传递按钮的下标)
-    def onRename(self, index):
-        self.checkboxes[index].setText(self.les[index].text())
-
-    def showColumnSelection(self, filePath):
-        if filePath.lower().endswith('.xyz'):
-            dataFrame = self.read_xyz(filePath)
+    # 1 gps 2 雷达 3 地震 4 放射性 5 电法 6 磁法  7 重力 8 高光谱
+    def chooseDataBase(self,index):
+        filePath = self.filePath
+        self.dataname = datanames[index]
+        if self.filePath.lower().endswith('.xyz'):
+            df = self.read_xyz(filePath)
         elif filePath.lower().endswith('.las'):
-            dataFrame = self.read_las(filePath)
+            df = self.read_las(filePath)
         elif filePath.lower().endswith('.grd'):
-            dataFrame = self.read_grd(filePath)
+            df = self.read_grd(filePath)
         elif filePath.lower().endswith('.csv'):
-            dataFrame = self.read_csv(filePath)
+            df = self.read_csv(filePath)
         elif filePath.lower().endswith('.txt'):
-            dataFrame = self.read_txt(filePath)
-        else:
-            dataFrame = pd.DataFrame()
-        column_names = dataFrame.columns.tolist()
+            df = self.read_txt(filePath)
+        elif filePath.lower().endswith('.sgy'):
+            df = self.read_sgy(filePath)
+        elif filePath.lower().endswith('.edi'):
+            df = self.read_edi(filePath)
+        elif filePath.lower().endswith('.nc'):
+            df = self.read_nc(filePath)
+        elif filePath.lower().endswith('.las'):
+            df = self.read_las(filePath)
+        column_names = df.columns.tolist()
+        self.df = df.iloc[int(self.ui.rowInput.text()):]
+        gms.filterdf.emit(self.df, self.dataname, self.fileName)
+
+        # 检查是否已经有 scroll_area，并移除它
+        if hasattr(self, 'scroll_area') and self.scroll_area is not None:
+            # 从布局中移除旧的 scroll_area
+            self.ui.columnLayout.removeWidget(self.scroll_area)
+            # 删除旧的 scroll_area 以释放资源
+            self.scroll_area.deleteLater()
+
         self.scroll_area = QScrollArea()  # 创建滚动区域
         self.scroll_widget = QWidget()     # 创建滚动区域的内部部件
         self.scroll_layout = QVBoxLayout(self.scroll_widget)  # 创建滚动区域的布局
 
-        for i, name in enumerate (column_names):
-            self.columns.append(name)
-            container = QWidget()
-            layout = QHBoxLayout()
-            cb = QCheckBox(name)
-            cb.setChecked(True)
-            label = QLabel("修改属性名：")
-            le = QLineEdit()
-            btn = QPushButton("确定")
-            btn.clicked.connect(lambda state, i = i: self.onRename(i))
-            layout.addWidget(cb, 5)
-            layout.addWidget(label, 2)
-            layout.addWidget(le, 5)
-            layout.addWidget(btn, 2)
-            container.setLayout(layout)
-            self.scroll_layout.addWidget(container)
-            self.checkboxes.append(cb)
-            self.les.append(le)
-            self.btns.append(btn)
+        lists = ['-', gpslist, sarlist, seglist, gamalist, electrolist, magneticlist, gravitylist, hyperlist]
+        if index > 0:
+            for i, name in enumerate (lists[index]):
+                container = QWidget()
+                layout = QHBoxLayout()
+                label = QLabel(name)
+                cb = QComboBox()
+                cb.addItems(column_names)
+                cb.addItem('-')
+                layout.addWidget(label)
+                layout.addWidget(cb)
+                container.setLayout(layout)
+                self.scroll_layout.addWidget(container)
+                self.cbs.append(cb)
 
         self.scroll_area.setWidget(self.scroll_widget)
         self.scroll_area.setWidgetResizable(True)
         self.ui.columnLayout.addWidget(self.scroll_area)
 
-        self.currentDataFrame = dataFrame
-        self.currentFilePath = filePath
+    # 加载数据按钮(直接将所选数据导入数据库)
+    def onLoadData(self):
+        index = self.ui.datacb.currentIndex()
+        columns = lists[index]
+        columns_str = ','.join(columns)
+        cursor = self.connection.cursor()
+        # 插入所选数据
+        placeholders = ",".join(["%s"] * len(columns))
+        sql = f'INSERT INTO {self.dataname}({columns_str}) VALUES({placeholders})'
+        for i in range(self.df.shape[0]):
+            rowdata = self.df.iloc[i]
+            values = []
+            for j in range(len(self.cbs)):
+                values.append(rowdata[self.cbs[j].currentText()])
+            cursor.execute(sql, tuple(values))
+        self.connection.commit()
+        # 查找所选文件名的数据
+        SI.mainWin._openSubWin(DB, connection=self.connection, tableid=index, filename= self.fileName)
+        # 在数据表里创建文件夹并且刷新文件树
+        path = self.projectPath + "/" + cdatanames[index] + "/" + self.fileName
+        os.makedirs(path, exist_ok=True)
+        self.ui.close()
+        gms.projectFile.emit(self.projectPath,
+                             os.path.basename(self.projectPath))
+
+    def onCancel(self):
+        self.ui.close()
+
+
+    def read_nc(self, filePath, skip_rows=0, selected_clumns=None):
+        import numpy as np
+        from osgeo import gdal
+        from netCDF4 import Dataset
+        dir = filePath
+        # 获取nc文件的内部变量
+        nc = Dataset(dir)
+        # 定义一个DataFrame()存储变量值
+        df = pd.DataFrame()
+        # 循环获取nc中的各个变量，并且把变量的值读出
+        for var in nc.variables.keys():
+            # 构建变量的路径
+            variable_path = 'NETCDF:' + dir + ':' + var
+            # 打开变量
+            variable = gdal.Open(variable_path)
+            # 检查变量是否成功打开
+            if variable is not None:
+                # 获取变量值
+                variable_value = variable.ReadAsArray()
+
+                # 检查变量值是否为 None
+                if variable_value is not None:
+                    # 将多维数组变成一维
+                    variable_value_flat = variable_value.flatten('C')
+                    # 将变量和值写入到 DataFrame 中
+                    df[var] = pd.Series(variable_value_flat)
+                else:
+                    df[var] = np.nan
+            else:
+                continue
+        df.insert(0, 'Filename', self.fileName)
+        return df
+
+    def read_edi(self, filePath, skip_rows=0, selected_clumns=None):
+        with open(filePath, 'r') as file:
+            edi_content = file.readlines()[65:]
+            freq_data = {}
+        # 处理每行数据
+        key = ""
+        for line in edi_content:
+            fields = line.strip()
+            # 打印解析后的字段值
+            if line.startswith('>') and not line.startswith('>!'):
+                if fields == ">END":
+                    break
+                key = fields.lstrip().lstrip('>').split('//')[0].strip()
+                freq_data[key] = []
+            elif key != "" and fields != "" and not line.startswith('>!'):
+                values = fields.split('  ')
+                for i in range(len(values)):
+                    freq_data[key].append(float(values[i]))
+        fieldnames = freq_data.keys()
+        data = [{key: values[i] for key, values in freq_data.items()} for i in
+                range(len(list(freq_data.values())[0]))]
+        df = pd.DataFrame(data, columns=fieldnames)
+        df.insert(0, 'Filename', self.fileName)
+        return df
+
+    def read_sgy(self, filepath, skip_rows=0, selected_columns=None):
+        data = segyio.open(filepath)
+        headers = segyio.tracefield.keys
+        df = pd.DataFrame(columns=list(headers.keys()))
+        for header_name, byte in headers.items():
+            df[header_name] = data.attributes(byte)[:]
+        inline_no = df['INLINE_3D']
+        xline_no = df['CROSSLINE_3D']
+        df['i'] = inline_no - inline_no.min()
+        df['j'] = xline_no - xline_no.min()
+        df.insert(0, 'Filename', self.fileName)
+        return df
 
     def read_las(self, file_path, skip_rows=0, selected_columns=None):
         las = lasio.read(file_path)
@@ -199,6 +260,7 @@ class Win_Filter:
             df = df[available_columns]
         if skip_rows > 0:
             df = df.iloc[skip_rows:]
+        df.insert(0, 'Filename', self.fileName)
         return df
 
     def read_csv(self, file_path, skip_rows=0, selected_columns=None):
@@ -215,7 +277,9 @@ class Win_Filter:
         df = df.apply(pd.to_numeric, errors='ignore')
         if selected_columns:
             df = df[selected_columns]
+        df.insert(0, 'Filename', self.fileName)
         return df
+
 
     def read_xyz(self, file_path, skip_rows=0, selected_columns=None):
         with open(file_path, 'r') as file:
@@ -224,6 +288,7 @@ class Win_Filter:
         usecols = selected_columns if selected_columns else all_column_names
         df = pd.read_csv(file_path, sep='\s+', skiprows=skip_rows + 8, names=all_column_names, usecols=usecols,
                          engine='python')
+        df.insert(0, 'Filename', self.fileName)
         return df
 
     def read_grd(self, file_path, skip_rows=0, selected_columns=None):
@@ -242,6 +307,7 @@ class Win_Filter:
         df = pd.DataFrame(data, columns=[f'第{i + 1}列' for i in range(max_cols)])
         if selected_columns:
             df = df[selected_columns]
+        df.insert(0, 'Filename', self.fileName)
         return df
 
     def read_txt(self, file_path, skip_rows=0, selected_columns=None):
@@ -258,26 +324,25 @@ class Win_Filter:
         df = df.apply(pd.to_numeric, errors='ignore')
         if selected_columns:
             df = df[selected_columns]
+        df.insert(0, 'Filename', self.fileName)
         return df
 
 class Win_Main:
-    def __init__(self, name):
+    def __init__(self, projectpath):
         self.ui = uic.loadUi("main.ui")
         self.ui.actionNewProject.triggered.connect(self.onNewProject)
         self.ui.actionOpenProject.triggered.connect(self.onOpenProject)
-        self.ui.actiondataImport.triggered.connect(self.onDataImport)
         self.ui.actiondataExport.triggered.connect(self.onDataExport)
-        self.ui.actiondataConversion.triggered.connect(self.onDataConversion)
+        self.ui.actiondataImport.triggered.connect(self.onDataImport)
         self.ui.actiondataPreview.triggered.connect(self.onDataPreview)
-        self.ui.actiondataBase.triggered.connect(self.onDataBase)
+        self.ui.actionGrid.triggered.connect(self.onGrid)
         self.ui.actionSeismic.triggered.connect(self.seismic)
         self.ui.actionGraMag.triggered.connect(self.graMag)
-        self.ui.actionGrid.triggered.connect(self.actionGrid)
         self.ui.fileTree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.fileTree.itemDoubleClicked.connect(self.onItemDoubleClicked)
         self.ui.fileTree.customContextMenuRequested.connect(self.showContextMenu)
-
-        self.projectname = name
+        self.projectpath = projectpath
+        self.projectname = os.path.basename(projectpath)
 
         self.connection = pymysql.connect(
             host='127.0.0.1',
@@ -290,25 +355,16 @@ class Win_Main:
 
         gms.projectFile.connect(self.loadProject)
         gms.loadData.connect(self.loadData)
-        self.mainPath = None
-        self.currentPath = None
+        self.mainPath = None # 项目路径
+        self.currentPath = None # 树形图中当前路径
+        self.model = None
 
     def __del__(self):
         self.connection.close()
-
-    # 网格化
-    def actionGrid(self):
-        SI.gridWin = Grid(self.currentPath)
+     # 网格化
+    def onGrid(self):
+        SI.gridWin = GridWin(self.connection, self.model, self.currentPath)
         SI.gridWin.ui.show()
-        SI.gridWin.ui.destroyed.connect(self.gpc)
-
-    def gpc(self):
-        gms.projectFile.connect(self.loadProject)
-
-
-    def onDataBase(self):
-        SI.chooseDataTableWin = ChooseDataTable()
-        SI.chooseDataTableWin.ui.show()
 
     def showContextMenu(self, pos):
         item = self.ui.fileTree.itemAt(pos)
@@ -423,7 +479,6 @@ class Win_Main:
     def actFileOpen(self,path):
         if not os.path.isdir(path):
             _, fileExtension = os.path.splitext(path)
-            print(fileExtension)
             # 在MDI子窗口中打开该文件
             if fileExtension == ".csv":
                 df = pd.read_csv(path)
@@ -533,38 +588,6 @@ class Win_Main:
         SI.startWin = Win_Start()
         SI.startWin.ui.show()
 
-    # 数据导入
-    def onDataImport(self):
-        def threadFunc():
-            gms.dataPath.emit(filePath)
-        filePath = QFileDialog.getOpenFileName(self.ui, "选择需要导入的文件")[0]
-        if filePath != "":
-            _, fileExtension = os.path.splitext(filePath)
-            if fileExtension in [".las", ".XYZ", ".csv", ".grd", ".txt"]:
-                SI.filterWin = Win_Filter()
-                SI.filterWin.ui.show()
-                Thread(target=threadFunc).start()
-            else:
-                QMessageBox.critical(
-                    self.ui,
-                    '错误',
-                    '该文件格式不能直接读取，请先进行格式转换!')
-
-    def actDataImport(self, filePath):
-        def threadFunc():
-            gms.dataPath.emit(filePath)
-        if filePath != "":
-            _, fileExtension = os.path.splitext(filePath)
-            if fileExtension in [".las", ".XYZ", ".csv", ".grd", ".txt"]:
-                SI.filterWin = Win_Filter()
-                SI.filterWin.ui.show()
-                Thread(target=threadFunc).start()
-            else:
-                QMessageBox.critical(
-                    self.ui,
-                    '错误',
-                    '该文件格式不能直接读取，请先进行格式转换!')
-
     # 数据导出
     def onDataExport(self):
         def threadFunc():
@@ -608,15 +631,15 @@ class Win_Main:
                 SI.subWinTable[str(Preview_CSV)]['subWin'].setWindowTitle(os.path.basename(filePath))
                 SI.subWinTable[str(Preview_CSV)]['subWin'].widget().table.setModel(model)
 
-    def onDataConversion(self):
+    def onDataImport(self):
         filePath, _ = QFileDialog.getOpenFileName(
             self.ui,  # 父窗口对象
-            "选择你要转换的文件",  # 标题
+            "选择需要导入的文件",  # 标题
             "",  # 起始目录
-            "文件类型 (*.sgy *.edi *.nc)"  # 选择类型过滤项，过滤内容在括号中
+            "文件类型 (*.sgy *.edi *.nc *.las *.XYZ *.csv *.grd *.txt)"  # 选择类型过滤项，过滤内容在括号中
         )
         _, fileExtension = os.path.splitext(filePath)
-        if fileExtension in [".sgy", ".edi", ".nc"]:
+        if fileExtension in [".sgy", ".edi", ".nc", ".las", ".XYZ", ".csv", ".grd", ".txt"]:
             title, okPressed = QInputDialog.getText(
                 self.ui,
                 "请为转换后的文件命名",
@@ -624,118 +647,42 @@ class Win_Main:
                 QLineEdit.Normal,
                 os.path.splitext(os.path.basename(filePath))[0])
             if okPressed:
-                # 这里只能读sgy的卷头信息
-                if fileExtension == ".sgy":
-                    segy_data = segyio.open('./segy/Sample.sgy')
+                SI.filterWin = Win_Filter(self.projectpath, filePath,  title, self.connection)
+                SI.filterWin.ui.show()
 
-                    headers = segyio.tracefield.keys
-                    segy_df = pd.DataFrame(columns=list(headers.keys()))
-                    for header_name, byte in headers.items():
-                        segy_df[header_name] = segy_data.attributes(byte)[:]
-                    inline_no = segy_df['INLINE_3D']
-                    xline_no = segy_df['CROSSLINE_3D']
-                    segy_df['i'] = inline_no - inline_no.min()
-                    segy_df['j'] = xline_no - xline_no.min()
-                    segy_df.to_csv(self.mainPath + "/原始文件/" + title + ".csv", index=False)
-                    shutil.copyfile(filePath,
-                                    SI.mainWin.mainPath + "/原始文件/" + os.path.basename(filePath))
 
-                # 这里只读edi的数据部分内容
-                if fileExtension == ".edi":
-                    # 读取 EDI 文件内容
-                    with open(filePath, 'r') as file:
-                        edi_content = file.readlines()[65:]
-                        freq_data = {}
-                    # 处理每行数据
-                    key = ""
-                    for line in edi_content:
-                        fields = line.strip()
-                        # 打印解析后的字段值
-                        if line.startswith('>') and not line.startswith('>!'):
-                            if fields == ">END":
-                                break
-                            key = fields.lstrip().lstrip('>').split('//')[0].strip()
-                            freq_data[key] = []
-                        elif key != "" and fields != "" and not line.startswith('>!'):
-                            values = fields.split('  ')
-                            for i in range(len(values)):
-                                freq_data[key].append(float(values[i]))
-                    fieldnames = freq_data.keys()
-                    data = [{key: values[i] for key, values in freq_data.items()} for i in
-                            range(len(list(freq_data.values())[0]))]
-                    # 写入csv文件
-                    with open(self.mainPath + "/原始文件/" + title + ".csv", 'w', newline='', encoding='utf-8') as f:
-                        writer = csv.DictWriter(f, fieldnames=fieldnames)
-                        writer.writeheader()
-                        writer.writerows(data)
-                    shutil.copyfile(filePath,
-                                    SI.mainWin.mainPath + "/原始文件/" + os.path.basename(filePath))
-
-                # 这里读取nc数据
-                if fileExtension == ".nc":
-                    import numpy as np
-                    from osgeo import gdal
-                    from netCDF4 import Dataset
-                    dir = filePath
-                    # 获取nc文件的内部变量
-                    nc = Dataset(dir)
-                    # 定义一个DataFrame()存储变量值
-                    df = pd.DataFrame()
-                    # 循环获取nc中的各个变量，并且把变量的值读出
-                    for var in nc.variables.keys():
-                        # 构建变量的路径
-                        variable_path = 'NETCDF:' + dir + ':' + var
-                        # 打开变量
-                        variable = gdal.Open(variable_path)
-                        # 检查变量是否成功打开
-                        if variable is not None:
-                            # 获取变量值
-                            variable_value = variable.ReadAsArray()
-
-                            # 检查变量值是否为 None
-                            if variable_value is not None:
-                                # 将多维数组变成一维
-                                variable_value_flat = variable_value.flatten('C')
-                                # 将变量和值写入到 DataFrame 中
-                                df[var] = pd.Series(variable_value_flat)
-                            else:
-                                df[var] = np.nan
-                        else:
-                            continue
-                    # 将DataFrame中的变量值写入到test.csv中
-                    df.to_csv(self.mainPath + "/原始文件/" + title + ".csv", encoding='utf-8', index=False)
-                SI.mainWin.loadProject(self.mainPath, os.path.basename(self.mainPath))
-
-    def _openSubWin(self, FuncClass, connection):
-        def createSubWin():
-            if connection:
-                subWinFunc = FuncClass(connection)
-            else:
-                subWinFunc = FuncClass()
+    def _openSubWin(self, FuncClass, connection=None, tableid=None, filename=None):
+        def createOrUpdateSubWin():
+            # 创建新子窗口实例
+            subWinFunc = FuncClass(connection, tableid, filename)
+            # 创建 QMdiSubWindow 并设置子控件
             subWin = QMdiSubWindow()
             subWin.setWidget(subWinFunc.ui)
             subWin.setAttribute(Qt.WA_DeleteOnClose)
             self.ui.mdiArea.addSubWindow(subWin)
-            # 存入表中，注意winFunc对象也要保存，不然对象没有引用，会销毁
-            SI.subWinTable[str(FuncClass)] = {'subWin' : subWin, 'subWinFunc' : subWinFunc}
-            subWin.show()
-            # 子窗口提到最上层，并且最大化
-            subWin.setWindowState(Qt.WindowActive | Qt.WindowMaximized)
 
-        # 如果该功能类型实例不存在
-        if str(FuncClass) not in SI.subWinTable:
-             # 创建实例
-            createSubWin()
-            return
-        # 如果已经存在，直接show一下
-        subWin = SI.subWinTable[str(FuncClass)]['subWin']
-        try:
-            subWin.show()
-            # 子窗口提到最上层，并且最大化
+            # 保存窗口引用
+            SI.subWinTable[str(FuncClass)] = {'subWin': subWin, 'subWinFunc': subWinFunc}
+
+            # 显示窗口并提到最上层
             subWin.setWindowState(Qt.WindowActive | Qt.WindowMaximized)
-        except:
-            # show 异常原因肯定是用户手动关闭了该窗口，subWin对象已经不存在了
-            createSubWin()
+            subWin.show()
+        # 检查该功能类型的实例是否已经存在
+        if str(FuncClass) in SI.subWinTable:
+            try:
+                # 取出已经存在的窗口
+                subWin = SI.subWinTable[str(FuncClass)]['subWin']
+                # 检查窗口是否已被销毁
+                if subWin is not None and subWin.isVisible():
+                    # 关闭并彻底删除现有窗口
+                    subWin.close()
+                    subWin.deleteLater()
+                    SI.subWinTable.pop(str(FuncClass), None)
+            except RuntimeError:
+                # 如果窗口已经被销毁，删除引用
+                SI.subWinTable.pop(str(FuncClass), None)
+        # 创建新的窗口
+        createOrUpdateSubWin()
 
     def onItemDoubleClicked(self, item):
         project = "/".join(SI.currentProject.split("/")[:-1])
@@ -771,50 +718,37 @@ class Win_Main:
                 SI.subWinTable[str(Original_Data)]['subWin'].widget().list.setModel(model)
         else:
             if(os.path.basename(path) == "重力数据"):
-                SI.mainWin._openSubWin(GravityDB, connection=self.connection)
-                try:
-                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("重力数据")
-                except KeyError as e:
-                    pass
+                SI.mainWin._openSubWin(DB, connection=self.connection, tableid=7)
             if(os.path.basename(path) == "磁法数据"):
-                SI.mainWin._openSubWin(MagneticDB, connection=self.connection)
-                try:
-                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("磁法数据")
-                except KeyError as e:
-                    pass
+                SI.mainWin._openSubWin(DB, connection=self.connection, tableid=6)
             if(os.path.basename(path) == "电法数据"):
-                SI.mainWin._openSubWin(ElectroDB, connection=self.connection)
-                try:
-                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("电法数据")
-                except KeyError as e:
-                    pass
+                SI.mainWin._openSubWin(DB, connection=self.connection, tableid=5)
             if(os.path.basename(path) == "地震数据"):
-                SI.mainWin._openSubWin(SegDB, connection=self.connection)
-                try:
-                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("地震数据")
-                except KeyError as e:
-                    pass
+                SI.mainWin._openSubWin(DB, connection=self.connection, tableid=3)
             if(os.path.basename(path) == "gps数据"):
-                SI.mainWin._openSubWin(GpsDB, connection=self.connection)
-                try:
-                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle("gps数据")
-                except KeyError as e:
-                    pass
+                SI.mainWin._openSubWin(DB, connection=self.connection, tableid=1)
             if(os.path.basename(path) == "放射性数据"):
-                SI.mainWin._openSubWin(GamaDB, connection=self.connection)
-                try:
-                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle('放射性数据')
-                except KeyError as e:
-                    pass
+                SI.mainWin._openSubWin(DB, connection=self.connection, tableid=4)
             if(os.path.basename(path) == "高光谱数据"):
-                SI.mainWin._openSubWin(HyperDB, connection=self.connection)
-                try:
-                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle('高光谱数据')
-                except KeyError as e:
-                    pass
+                SI.mainWin._openSubWin(DB, connection=self.connection, tableid=8)
             if(os.path.basename(path) == "地基合成孔径雷达数据"):
-                SI.mainWin._openSubWin(SarDB, connection=self.connection)
-                try:
-                    SI.subWinTable[str(DataBase)]['subWin'].setWindowTitle('地基合成孔径雷达数据')
-                except KeyError as e:
-                    pass
+                SI.mainWin._openSubWin(DB, connection=self.connection, tableid=2)
+            else:
+                pdir = os.path.basename(os.path.dirname(path)) #path的上一级目录
+                if(pdir == "重力数据"):
+                    SI.mainWin._openSubWin(DB, connection=self.connection, tableid=7, filename=os.path.basename(path))
+                if(pdir == "磁法数据"):
+                    SI.mainWin._openSubWin(DB, connection=self.connection, tableid=6, filename=os.path.basename(path))
+                if(pdir == "电法数据"):
+                    SI.mainWin._openSubWin(DB, connection=self.connection, tableid=5, filename=os.path.basename(path))
+                if(pdir == "地震数据"):
+                    SI.mainWin._openSubWin(DB, connection=self.connection, tableid=3, filename=os.path.basename(path))
+                if(pdir == "gps数据"):
+                    SI.mainWin._openSubWin(DB, connection=self.connection, tableid=1, filename=os.path.basename(path))
+                if(pdir == "放射性数据"):
+                    SI.mainWin._openSubWin(DB, connection=self.connection, tableid=4, filename=os.path.basename(path))
+                if(pdir == "高光谱数据"):
+                    SI.mainWin._openSubWin(DB, connection=self.connection, tableid=8, filename=os.path.basename(path))
+                if(pdir == "地基合成孔径雷达数据"):
+                    SI.mainWin._openSubWin(DB, connection=self.connection, tableid=2, filename=os.path.basename(path))
+            self.model = SI.subWinTable[str(DB)]['subWin'].widget().table.model()

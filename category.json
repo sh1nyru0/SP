@@ -1,10 +1,5 @@
 [
   {
-    "name": "工程1",
-    "location": "D:/SP/project",
-    "project": "D:/SP/project/工程1"
-  },
-  {
     "name": "geo",
     "location": "D:/SP/project",
     "project": "D:/SP/project/geo"

@@ -1,45 +1,146 @@
-import os
+import sqlite3
 import pandas as pd
-import geopandas as gpd
-from shapely.geometry import Point
+from PyQt5.QtCore import QAbstractTableModel, Qt
+from PyQt5.QtWidgets import QApplication, QTableView, QVBoxLayout, QWidget, QPushButton, QLabel, QHBoxLayout
 
-# 定义 CSV 文件所在的基路径
-base_dir = "D:/SP/project/test"  # 替换为你的项目路径
-directories = ["重力文件", "磁法文件", "电法文件"]  # 不同数据文件的目录名称
+class LazyDatabaseModel(QAbstractTableModel):
+    def __init__(self, db_path, page_size=100, parent=None):
+        super().__init__(parent)
+        self.db_path = db_path  # 数据库路径
+        self.page_size = page_size  # 每页数据量
+        self.current_page = 0  # 当前页号
+        self._data = self._load_data()  # 加载第一页数据
 
-# 初始化空的 GeoDataFrame，用于存储合并后的数据
-combined_gdf = gpd.GeoDataFrame()
+    def _load_data(self):
+        """从数据库加载当前页的数据"""
+        offset = self.current_page * self.page_size
+        query = f"SELECT * FROM data LIMIT {self.page_size} OFFSET {offset}"
 
-# 固定点作为几何信息，例如使用 (0, 0) 作为所有记录的点
-default_geometry = Point(0, 0)
+        with sqlite3.connect(self.db_path) as conn:
+            df = pd.read_sql_query(query, conn)
+        return df
 
-# 遍历每个子目录
-for directory in directories:
-    dir_path = os.path.join(base_dir, directory)
+    def rowCount(self, parent=None):
+        """返回当前页的行数"""
+        return self._data.shape[0]
 
-    # 遍历子目录中的每个 CSV 文件
-    for filename in os.listdir(dir_path):
-        if filename.endswith(".csv"):
-            csv_path = os.path.join(dir_path, filename)
+    def columnCount(self, parent=None):
+        """返回列数"""
+        return self._data.shape[1]
 
-            # 读取 CSV 文件
-            df = pd.read_csv(csv_path)
+    def data(self, index, role=Qt.DisplayRole):
+        """按需返回单元格数据"""
+        if not index.isValid() or role != Qt.DisplayRole:
+            return None
 
-            # 创建几何列，所有点固定为 (0, 0)
-            df['geometry'] = default_geometry
+        value = self._data.iloc[index.row(), index.column()]
+        return str(value)
 
-            # 将 pandas DataFrame 转为 GeoDataFrame
-            gdf = gpd.GeoDataFrame(df, geometry='geometry', crs="EPSG:4326")  # 使用 WGS84 投影 (EPSG:4326)
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        """显示列名或行号"""
+        if role != Qt.DisplayRole:
+            return None
+        if orientation == Qt.Horizontal:
+            return str(self._data.columns[section])
+        else:
+            return str(section + 1 + self.current_page * self.page_size)
 
-            # 在每个文件的数据中增加列，标识来源文件夹和文件名
-            gdf['directory'] = directory  # 标识数据来源的目录
-            gdf['filename'] = filename  # 标识数据来源的文件
+    def nextPage(self):
+        """跳转到下一页"""
+        self.current_page += 1
+        self._data = self._load_data()
+        self.layoutChanged.emit()  # 通知视图数据已更新
 
-            # 将当前文件的 GeoDataFrame 追加到合并的 GeoDataFrame 中
-            combined_gdf = pd.concat([combined_gdf, gdf], ignore_index=True)
+    def prevPage(self):
+        """跳转到上一页"""
+        if self.current_page > 0:
+            self.current_page -= 1
+            self._data = self._load_data()
+            self.layoutChanged.emit()
 
-# 保存合并后的 Shapefile
-output_shapefile = os.path.join(base_dir, "combined_data.shp")
-combined_gdf.to_file(output_shapefile)
+    def firstPage(self):
+        """跳转到首页"""
+        self.current_page = 0
+        self._data = self._load_data()
+        self.layoutChanged.emit()
 
-print(f"Combined Shapefile saved: {output_shapefile}")
+    def lastPage(self):
+        """跳转到末页"""
+        with sqlite3.connect(self.db_path) as conn:
+            total_rows = conn.execute("SELECT COUNT(*) FROM data").fetchone()[0]
+        self.current_page = (total_rows - 1) // self.page_size
+        self._data = self._load_data()
+        self.layoutChanged.emit()
+
+# 分页查看器类
+class DataFrameViewer(QWidget):
+    def __init__(self, db_path):
+        super().__init__()
+        self.model = LazyDatabaseModel(db_path, page_size=100)
+
+        # 创建 QTableView 和分页按钮
+        self.view = QTableView()
+        self.view.setModel(self.model)
+
+        self.first_button = QPushButton("首页")
+        self.prev_button = QPushButton("上一页")
+        self.next_button = QPushButton("下一页")
+        self.last_button = QPushButton("末页")
+        self.page_label = QLabel(f"当前页: 1")
+
+        # 绑定按钮事件
+        self.first_button.clicked.connect(self.first_page)
+        self.prev_button.clicked.connect(self.prev_page)
+        self.next_button.clicked.connect(self.next_page)
+        self.last_button.clicked.connect(self.last_page)
+
+        # 布局
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.first_button)
+        button_layout.addWidget(self.prev_button)
+        button_layout.addWidget(self.page_label)
+        button_layout.addWidget(self.next_button)
+        button_layout.addWidget(self.last_button)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.view)
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
+
+    def next_page(self):
+        """跳转到下一页并更新页码显示"""
+        self.model.nextPage()
+        self.update_page_label()
+
+    def prev_page(self):
+        """跳转到上一页并更新页码显示"""
+        self.model.prevPage()
+        self.update_page_label()
+
+    def first_page(self):
+        """跳转到首页并更新页码显示"""
+        self.model.firstPage()
+        self.update_page_label()
+
+    def last_page(self):
+        """跳转到末页并更新页码显示"""
+        self.model.lastPage()
+        self.update_page_label()
+
+    def update_page_label(self):
+        """更新页码显示"""
+        self.page_label.setText(f"当前页: {self.model.current_page + 1}")
+
+if __name__ == "__main__":
+    import sys
+
+    app = QApplication(sys.argv)
+
+    # 使用 example.db 数据库
+    db_path = "example.db"
+
+    viewer = DataFrameViewer(db_path)
+    viewer.resize(800, 600)
+    viewer.show()
+
+    sys.exit(app.exec_())

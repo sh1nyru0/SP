@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>452</width>
-    <height>392</height>
+    <width>509</width>
+    <height>387</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>重力数据库</string>
+   <string>重力数据</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -80,6 +80,13 @@
       <widget class="QPushButton" name="btn_select">
        <property name="text">
         <string>查询</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="grid">
+       <property name="text">
+        <string>网格化数据</string>
        </property>
       </widget>
      </item>

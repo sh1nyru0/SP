@@ -84,11 +84,9 @@
     <property name="title">
      <string>数据管理</string>
     </property>
-    <addaction name="actiondataImport"/>
     <addaction name="actiondataExport"/>
-    <addaction name="actiondataConversion"/>
+    <addaction name="actiondataImport"/>
     <addaction name="actiondataPreview"/>
-    <addaction name="actiondataBase"/>
    </widget>
    <widget class="QMenu" name="menu_3">
     <property name="title">
@@ -140,19 +138,17 @@
     <string>打开项目</string>
    </property>
   </action>
-  <action name="actiondataImport">
-   <property name="text">
-    <string>数据导入</string>
-   </property>
-  </action>
   <action name="actiondataExport">
    <property name="text">
     <string>数据导出</string>
    </property>
   </action>
-  <action name="actiondataConversion">
+  <action name="actiondataImport">
    <property name="text">
-    <string>格式转换</string>
+    <string>数据导入</string>
+   </property>
+   <property name="toolTip">
+    <string>数据导入</string>
    </property>
   </action>
   <action name="actionSeismic">
